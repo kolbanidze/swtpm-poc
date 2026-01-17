@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-extract_srk_seed.py - Извлечение SRK Seed из obj_0x81000001.bin (адрес может отличаться)
+srk_extractor.py - Извлечение SRK Seed из obj_0x81000001.bin (адрес может отличаться)
 """
 
 import struct
@@ -107,7 +107,7 @@ def main():
     import sys
     
     if len(sys.argv) < 2:
-        print("Usage: python3 extract_srk_seed.py <obj_0x81000001.bin>")
+        print("Usage: python3 srk_extractor.py <obj_0x81000001.bin>")
         print("\nОбычно файл находится здесь после запуска permall_parser.py:")
         print("  ./extracted/obj_0x81000001.bin")
         sys.exit(1)

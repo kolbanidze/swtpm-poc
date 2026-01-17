@@ -37,9 +37,9 @@ def kdfa(hash_alg, key, label, context_u, context_v, bits):
     return out_key[:bytes_needed]
 
 def usage():
-    print("Usage: python3 luks_extractor.py <srk_seed_bin> <systemd_token_b64.txt>")
+    print("Usage: python3 luks_extractor.py <srk_seed_bin> <systemd_token.json>")
     print("Для получения srk_seed.bin необходимо запустить srk_extractor.py")
-    print("Для получения systemd_token_b64.txt необходимо запустить sd_extractor.py")
+    print("Для получения systemd_token.json необходимо запустить sd_extractor.py")
 
 def main():
     print("=== Systemd TPM2 LUKS Key Recovery Tool ===\n")
@@ -64,9 +64,9 @@ def main():
             usage()
             return
         
-        if os.path.isfile("systemd_token_b64.txt"):
-            sd_b64_file = "systemd_token_b64.txt"
-            print("[*] Принимается за токен systemd: systemd_token_b64.txt")
+        if os.path.isfile("systemd_token.json"):
+            sd_b64_file = "systemd_token.json"
+            print("[*] Принимается за токен systemd: systemd_token.json")
         else:
             print("[!] Файл токена systemd не найден.")
             usage()

@@ -35,7 +35,7 @@ sudo python3 sd_extractor.py /dev/vda2 0
 </p>
 
 ### 2. Parsing the swtpm dump (permall_parser.py)
-You need to locate the swtpm state file (usually `tpm2-00.permall`). The script parses its structure and extracts all stored objects and keys into the `extracted` folder.
+You need to locate the swtpm state file (usually `tpm2-00.permall`). That file usually located at `/var/lib/libvirt/swtpm/<UUID>/tpm2/tpm2-00.permall`. The script parses its structure and extracts all stored objects and keys into the `extracted` folder.
 
 ```bash
 python3 permall_parser.py /path/to/tpm2-00.permall

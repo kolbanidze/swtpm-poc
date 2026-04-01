@@ -31,7 +31,7 @@ sudo python3 sd_extractor.py /dev/vda2 0
 *   Output file: `systemd_token.json`
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_1.png" width=384>
+    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_1.png" width=576>
 </p>
 
 ### 2. Parsing the swtpm dump (permall_parser.py)
@@ -42,7 +42,7 @@ python3 permall_parser.py /path/to/tpm2-00.permall
 ```
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_2.png" width=384>
+    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_2.png" width=576>
 </p>
 
 ### 3. Extracting the SRK Seed (srk_extractor.py)
@@ -54,7 +54,7 @@ python3 srk_extractor.py extracted/obj_0x81000001.bin
 The script will find the seed and save it to `srk_seed.bin`.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_3.png" width=384>
+    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_3.png" width=576>
 </p>
 
 ### 4. Recovering the LUKS key (luks_extractor.py)
@@ -65,7 +65,7 @@ python3 luks_extractor.py
 ```
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_4.png" width=384>
+    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/stage_4.png" width=576>
 </p>
 
 If everything succeeds, the script will output:
@@ -73,5 +73,5 @@ If everything succeeds, the script will output:
 2. A ready-to-use `cryptsetup` command to unlock/mount the disk.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/luks_access.png" width=384>
+    <img src="https://raw.githubusercontent.com/kolbanidze/swtpm-poc/refs/heads/main/screenshots/luks_access.png" width=576>
 </p>

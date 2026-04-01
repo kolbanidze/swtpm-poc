@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-srk_extractor.py - Извлечение SRK Seed из obj_0x81000001.bin (адрес может отличаться)
-"""
-
 import struct
 from pathlib import Path
 
@@ -16,20 +12,15 @@ def extract_srk_from_object(obj_file: str):
     - TPMT_SENSITIVE:
         - sensitiveType (0x0023 = ECC)
         - authValue (TPM2B, обычно пустой)
-        - seedValue (TPM2B, 32 байта) ← SRK SEED
-        - privateKey (TPM2B, 32 байта) ← ECC private key
+        - seedValue (TPM2B, 32 байта) <- SRK SEED
+        - privateKey (TPM2B, 32 байта) <- ECC private key
     """
     
     data = Path(obj_file).read_bytes()
     
-    print(f"[*] Анализ {obj_file} ({len(data)} байт)")
-    print(f"[*] Полный hex дамп:")
+    print(f"[*] Selected {obj_file} ({len(data)} bytes)")
     
-    for i in range(0, len(data), 32):
-        hex_str = data[i:i+32].hex()
-        print(f"    {i:04x}: {hex_str}")
-    
-    print("\n[*] Поиск блоков TPM2B размером 32 байт (потенциальные ключи)...")
+    print("\n[*] Searching for 32 bytes TPM2B blocks (potential keys)...")
     
     found_keys = []
     
@@ -47,9 +38,9 @@ def extract_srk_from_object(obj_file: str):
                 if i >= 2:
                     prev = struct.unpack_from('>H', data, i-2)[0]
                     if prev == 0x0023:
-                        context = "(после маркера ECC)"
+                        context = "(after ECC marker)"
                     elif prev == 0x0020:
-                        context = "(после другого TPM2B)"
+                        context = "(after another TPM2B)"
                 
                 found_keys.append({
                     'offset': i,
@@ -57,10 +48,10 @@ def extract_srk_from_object(obj_file: str):
                     'context': context
                 })
                 
-                print(f"\n    Offset 0x{i:04X}: TPM2B size=32 {context}")
-                print(f"    Data: {block.hex()}")
+                print(f"\n\tOffset 0x{i:04X}: TPM2B size=32 {context}")
+                print(f"\tData: {block.hex()}")
     
-    print(f"\n[*] Найдено {len(found_keys)} потенциальных ключей размером в 32 байта.")
+    print(f"\n[*] Detected {len(found_keys)} potential 32 byte keys.")
     
     # Для ECC P-256 SRK структура обычно:
     # После публичных X,Y координат идёт TPMT_SENSITIVE
@@ -71,8 +62,7 @@ def extract_srk_from_object(obj_file: str):
     # Второй = privateKey
     
     if len(found_keys) >= 4:
-        # Предполагаем: X, Y, Seed, PrivateKey
-        print("\n[*] Структура: X, Y, SeedValue, PrivateKey")
+        print("\n[*] Structure: X, Y, SeedValue, PrivateKey")
         
         # Ищем блок который следует за нулевым authValue
         for i, key in enumerate(found_keys):
@@ -85,7 +75,7 @@ def extract_srk_from_object(obj_file: str):
                 if check_size == 32:
                     check_data = data[check_offset+2:check_offset+34]
                     if all(b == 0 for b in check_data):
-                        print(f"\n    🔑 Найден seedValue!")
+                        print(f"\n[!!!] Seed value extracted!")
                         print(f"    SRK_SEED @ 0x{offset:04X}: {key['data'].hex()}")
                         
                         # Следующий блок должен быть privateKey
@@ -99,7 +89,7 @@ def extract_srk_from_object(obj_file: str):
                         }
     
     # Fallback: просто выводим все найденные ключи
-    print("\n[!] Не удалось определить структуру. Нужен ручной анализ.")    
+    print("\n[!] Failed to detect structure.")    
     return None
 
 
@@ -108,27 +98,20 @@ def main():
     
     if len(sys.argv) < 2:
         print("Usage: python3 srk_extractor.py <obj_0x81000001.bin>")
-        print("\nОбычно файл находится здесь после запуска permall_parser.py:")
+        print("\nTypically the file is located here after running permall_parser.py:")
         print("  ./extracted/obj_0x81000001.bin")
         sys.exit(1)
     
     result = extract_srk_from_object(sys.argv[1])
     
-    if result:
-        print("\n" + "=" * 60)
-        print("  ИЗВЛЕЧЕННЫЕ КЛЮЧИ")
-        print("=" * 60)
-        print(f"\nSRK_SEED = \"{result['seed'].hex()}\"")
-        if result['private_key']:
-            print(f"SRK_PRIVATE_KEY = \"{result['private_key'].hex()}\"")
-        
+    if result:        
         # Save to files
         Path("srk_seed.bin").write_bytes(result['seed'])
-        print("\n[+] SRK сохранен в srk_seed.bin")
+        print("\n[+] SRK seed saved to srk_seed.bin")
         
         if result['private_key']:
             Path("srk_private_key.bin").write_bytes(result['private_key'])
-            print("[+] Приватный ключ сохранен в srk_private_key.bin")
+            print("[+] The private key is saved in srk_private_key.bin")
 
 
 if __name__ == "__main__":

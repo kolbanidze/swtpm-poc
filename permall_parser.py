@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""
-Парсер состояния swtpm/libtpms (TPM 2.0)
-С поддержкой swtpm envelope
-
-Использование: python3 permall_parser.py /path/to/tpm2-00.permall
-"""
-
 import struct
 import sys
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
 from pathlib import Path
 
-# Константы
 PERSISTENT_ALL_MAGIC = 0xAB364723
 USER_NVRAM_MAGIC = 0x094F22C3
 NV_INDEX_MAGIC = 0x2547265A
@@ -20,7 +12,6 @@ NV_INDEX_MAGIC = 0x2547265A
 TPM_HT_NV_INDEX = 0x01
 TPM_HT_PERSISTENT = 0x81
 
-# Структуры
 @dataclass
 class NVHeader:
     version: int
@@ -137,48 +128,41 @@ class PermallParser:
     
     def parse_swtpm_envelope(self) -> bool:
         """Анализ и пропуск swtpm envelope"""
-        print("[*] Анализ swtpm envelope...")
-        
-        # Показываем первые 32 байта
-        print("    Первые 32 байта файла:")
-        for i in range(0, min(32, len(self.data)), 16):
-            hex_str = ' '.join(f'{b:02x}' for b in self.data[i:i+16])
-            ascii_str = ''.join(chr(b) if 32 <= b < 127 else '.' for b in self.data[i:i+16])
-            print(f"    {i:04x}: {hex_str}  {ascii_str}")
-        
+        print("[*] Analysing swtpm envelope...")
+                
         # Ищем начало libtpms данных
         libtpms_offset = self.find_libtpms_start()
         if libtpms_offset is None:
-            print("[!] Не удалось найти начало данных libtpms!")
+            print("[!] Failed to find libtpms beginning!")
             return False
         
         self.libtpms_start = libtpms_offset
-        print(f"\n[+] Данные libtpms начинаются с смещения: 0x{libtpms_offset:X} ({libtpms_offset} байт)")
+        print(f"\n[+] libtpms data begins from offset: 0x{libtpms_offset:X} ({libtpms_offset} bytes)")
         
         # Анализируем envelope
         if libtpms_offset > 0:
             # Нет, я не буду переводить envelope как конверт
-            print(f"    swtpm envelope size: {libtpms_offset} bytes")
+            print(f"\tswtpm envelope size: {libtpms_offset} bytes")
             envelope = self.data[:libtpms_offset]
-            print(f"    Envelope hex: {envelope.hex()}")
+            print(f"\tEnvelope hex: {envelope.hex()}")
         
         self.offset = libtpms_offset
         return True
     
     def parse_file_header(self) -> bool:
         """Парсинг заголовка libtpms"""
-        print("\n[*] Парсинг заголовка PERSISTENT_ALL...")
+        print("\n[*] Parsing PERSISTENT_ALL header...")
         
         header = self.read_header()
-        print(f"    Version: {header.version}")
-        print(f"    Magic: 0x{header.magic:08X}")
-        print(f"    MinVersion: {header.min_version}")
+        print(f"\tVersion: {header.version}")
+        print(f"\tMagic: 0x{header.magic:08X}")
+        print(f"\tMinVersion: {header.min_version}")
         
         if header.magic != PERSISTENT_ALL_MAGIC:
-            print(f"[!] Неверный magic!")
+            print(f"[!] Wrong magic!")
             return False
         
-        print("[+] Заголовок валиден")
+        print("[+] Header is OK")
         
         # JSON Profile (TPM2B string) - версия >= 4
         if header.version >= 4:
@@ -186,14 +170,14 @@ class PermallParser:
             if json_profile:
                 try:
                     profile_str = json_profile.decode('utf-8')
-                    print(f"\n[*] Профиль JSON ({len(json_profile)} байт):")
+                    print(f"\n[*] JSON profile ({len(json_profile)} bytes):")
                     # Показываем первые 200 символов
                     if len(profile_str) > 200:
-                        print(f"    {profile_str[:200]}...")
+                        print(f"\t{profile_str[:200]}...")
                     else:
-                        print(f"    {profile_str}")
+                        print(f"\t{profile_str}")
                 except:
-                    print(f"    (binary, {len(json_profile)} bytes)")
+                    print(f"\t(binary, {len(json_profile)} bytes)")
         
         return True
     
@@ -205,7 +189,7 @@ class PermallParser:
             # NV_INDEX Header
             nv_header = self.read_header()
             if nv_header.magic != NV_INDEX_MAGIC:
-                print(f"      [!] Неверный NV_INDEX magic: 0x{nv_header.magic:08X}")
+                print(f"\t[!] Wrong NV_INDEX magic: 0x{nv_header.magic:08X}")
                 self.offset = entry_start + entry_size
                 return None
             
@@ -247,19 +231,19 @@ class PermallParser:
             )
             
         except Exception as e:
-            print(f"      [!] Ошибка: {e}")
+            print(f"      [!] Error: {e}")
             self.offset = entry_start + entry_size
             return None
     
     def parse_user_nvram(self) -> bool:
         """Парсинг USER_NVRAM"""
-        print("\n[*] Поиск USER_NVRAM...")
+        print("\n[*] Searching USER_NVRAM...")
         
         nvram_offset = self.find_magic(USER_NVRAM_MAGIC, self.libtpms_start)
         if nvram_offset is None:
-            print("[!] USER_NVRAM не найден!")
+            print("[!] USER_NVRAM not found!")
             # Попробуем показать все найденные magic numbers
-            print("\n[*] Поиск известных magic numbers в файле...")
+            print("\n[*] Searching for known magic numbers...")
             magics = [
                 (PERSISTENT_ALL_MAGIC, "PERSISTENT_ALL"),
                 (USER_NVRAM_MAGIC, "USER_NVRAM"),
@@ -276,46 +260,45 @@ class PermallParser:
         self.offset = nvram_offset
         
         header = self.read_header()
-        print(f"    Version: {header.version}")
+        print(f"\tVersion: {header.version}")
         
         source_size = self.read_uint64()
-        print(f"    Source size: {source_size}")
+        print(f"\tSource size: {source_size}")
         
         # Entries
         entry_count = 0
-        print("\n[*] Записи USER_NVRAM:")
+        print("\n[*] USER_NVRAM entries:")
         
         while self.offset < len(self.data) - 8:
             entry_start = self.offset
             entry_size = self.read_uint32()
             
             if entry_size == 0:
-                print(f"\n    [Конец списка]")
                 break
             
             if entry_size > 100000:
-                print(f"    [!] entry_size слишком большой: {entry_size}")
+                print(f"\t[!] entry_size too large: {entry_size}")
                 break
                 
             handle = self.read_uint32()
             handle_type = (handle >> 24) & 0xFF
             
             entry_count += 1
-            print(f"\n    Entry #{entry_count}:")
-            print(f"      Offset: 0x{entry_start:X}")
-            print(f"      Size: {entry_size}")
-            print(f"      Handle: 0x{handle:08X}")
+            print(f"\n\tEntry #{entry_count}:")
+            print(f"\tOffset: 0x{entry_start:X}")
+            print(f"\tSize: {entry_size}")
+            print(f"\tHandle: 0x{handle:08X}")
             
             if handle_type == TPM_HT_NV_INDEX:
-                print(f"      Type: NV_INDEX")
+                print(f"\tType: NV_INDEX")
                 nv_entry = self.parse_nv_index_structure(entry_start, entry_size)
                 if nv_entry:
                     self.nv_indices.append(nv_entry)
-                    print(f"      Attributes: 0x{nv_entry.public.attributes:08X}")
-                    print(f"      Data: {nv_entry.data_size} bytes")
+                    print(f"\tAttributes: 0x{nv_entry.public.attributes:08X}")
+                    print(f"\tData: {nv_entry.data_size} bytes")
                     
             elif handle_type == TPM_HT_PERSISTENT:
-                print(f"      Type: PERSISTENT_OBJECT")
+                print(f"\tType: PERSISTENT_OBJECT")
                 body_size = entry_size - 8
                 raw_data = self.read_bytes(body_size)
                 self.persistent_objects.append(PersistentObjectEntry(
@@ -324,16 +307,16 @@ class PermallParser:
                     raw_offset=entry_start
                 ))
             else:
-                print(f"      Type: OTHER (0x{handle_type:02X})")
+                print(f"\tType: OTHER (0x{handle_type:02X})")
                 self.offset = entry_start + entry_size
         
-        print(f"\n[+] Итого: {len(self.nv_indices)} NV indices, {len(self.persistent_objects)} объедков")
+        print(f"\n[+] Total: {len(self.nv_indices)} NV indices, {len(self.persistent_objects)} objects")
         return True
     
     def dump_results(self, output_dir: Path):
         """Сохранение результатов"""
         output_dir.mkdir(parents=True, exist_ok=True)
-        print(f"\n[*] Сохранение в {output_dir}/")
+        print(f"\n[*] Saving results to {output_dir}/")
         
         for nv in self.nv_indices:
             # Binary data
@@ -351,12 +334,12 @@ class PermallParser:
                 f.write(f"AuthValue: {nv.auth_value.hex() if nv.auth_value else 'none'}\n")
                 f.write(f"\nData (hex):\n{nv.data.hex()}\n")
             
-            print(f"    [+] nv_0x{nv.handle:08X}.bin ({nv.data_size} bytes)")
+            print(f"\t[+] nv_0x{nv.handle:08X}.bin ({nv.data_size} bytes)")
         
         for obj in self.persistent_objects:
             bin_file = output_dir / f"obj_0x{obj.handle:08X}.bin"
             bin_file.write_bytes(obj.raw_data)
-            print(f"    [+] obj_0x{obj.handle:08X}.bin ({len(obj.raw_data)} bytes)")
+            print(f"\t[+] obj_0x{obj.handle:08X}.bin ({len(obj.raw_data)} bytes)")
     
     def parse(self) -> bool:
         if not self.parse_swtpm_envelope():
@@ -380,22 +363,17 @@ def main():
         print(f"[!] File not found: {permall_path}")
         sys.exit(1)
     
-    print("=" * 60)
-    print("  SWTPM PERMALL PARSER")
-    print("=" * 60)
-    print(f"\n[*] Файл: {permall_path}")
-    print(f"[*] Размер: {permall_path.stat().st_size} байт\n")
+    print(f"\n[*] File: {permall_path}")
+    print(f"[*] Size: {permall_path.stat().st_size} bytes\n")
     
     data = permall_path.read_bytes()
     parser = PermallParser(data)
     
     if parser.parse():
         parser.dump_results(output_dir)
-        print("\n" + "=" * 60)
-        print("  ПАРСИНГ ЗАВЕРШЕН")
-        print("=" * 60)
+        print('[*] Parsing complete.')
     else:
-        print("\n[!] Ошибка парсинга")
+        print("\n[!] An error occured while parsing.")
         sys.exit(1)
 
 

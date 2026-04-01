@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import subprocess
 import sys
 import os
@@ -8,7 +9,7 @@ def get_token(drive: str, token_id: str):
 
 def usage():
     print("Usage: sudo python sd_extractor.py <luks_drive> <token_id> <output>")
-    print("Если <output> не указан, то используется systemd_token.json")
+    print("If <output> wasn't specified it will use systemd_token.json")
 
 def main():
     if os.getuid() != 0:
@@ -25,13 +26,13 @@ def main():
         output_file = sys.argv[3]
     except IndexError:
         output_file = "systemd_token.json"
-    print(f"[*] LUKS диск: {drive}")
-    print(f"[*] Номер токена: {token_id}")
+    print(f"[*] LUKS drive: {drive}")
+    print(f"[*] Token id: {token_id}")
     
     token = get_token(drive, token_id)
     with open(output_file, "w") as file:
         file.write(token)
-    print(f"[*] Данные о токене успешно записаны в {output_file}")
+    print(f"[*] Token info was successfully written to {output_file}")
 
 if __name__ == "__main__":
     main()

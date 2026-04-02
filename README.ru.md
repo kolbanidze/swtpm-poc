@@ -1,6 +1,6 @@
 # swtpm-poc
 
-[![Russian](https://img.shields.io/badge/README-in_English-red.svg)](README.ru.md)
+[![Russian](https://img.shields.io/badge/README-in_English-red.svg)](README.md)
 
 *Этот проект демонстрирует уязвимость схемы защиты TPM+PIN в systemd-cryptenroll - программную эмуляцию атаки faulTPM без какого-либо физического вмешательства в аппаратный TPM.*
 

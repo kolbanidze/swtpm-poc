@@ -111,7 +111,7 @@ def main():
     # [AlgID] + [Hash]
     obj_name = struct.pack('>H', pub_name_alg) + name_hash
     
-    print(f"[*] Name объекта: {obj_name.hex()}")
+    print(f"[*] Object name: {obj_name.hex()}")
     
     # TPM использует KDFa для создания ключа AES из Seed родителя (SRK)
     # Params: Hash=SHA256, Key=SRK_Seed, Label="STORAGE", ContextU=Name, Bits=128

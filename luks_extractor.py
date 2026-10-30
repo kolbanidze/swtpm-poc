@@ -6,7 +6,8 @@ import base64
 import os
 import sys
 import json
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+from cryptography.hazmat.decrepit.ciphers import modes
 from cryptography.hazmat.backends import default_backend
 
 # Константы TPM 2.0
@@ -14,10 +15,8 @@ TPM_ALG_SHA256 = 0x000B
 TPM_ALG_KEYEDHASH = 0x0008
 
 def kdfa(hash_alg, key, label, context_u, context_v, bits):
-    """
-    Реализация функции KDFa согласно спецификации TPM 2.0.
-    Используется для генерации симметричного ключа шифрования из Seed.
-    """
+    """Реализация функции KDFa согласно спецификации TPM 2.0.
+    Используется для генерации симметричного ключа шифрования из seed."""
     if hash_alg != TPM_ALG_SHA256: 
         raise ValueError("Only SHA256 supported in this script")
     

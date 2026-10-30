@@ -53,11 +53,10 @@ def extract_srk_from_object(obj_file: str):
     
     print(f"\n[*] Detected {len(found_keys)} potential 32 byte keys.")
     
-    # Для ECC P-256 SRK структура обычно:
-    # После публичных X,Y координат идёт TPMT_SENSITIVE
+    # Для ECC P-256 SRK структура:
     # sensitiveType (2) + authValue (TPM2B) + seedValue (TPM2B) + privateKey (TPM2B)
     
-    # Эвристика: ищем последовательность из 2-3 TPM2B блоков по 32 байта
+    # Ищем последовательность из 2-3 TPM2B блоков по 32 байта
     # Первый (после нулей authValue) = seedValue = SRK_SEED
     # Второй = privateKey
     

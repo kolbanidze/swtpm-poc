@@ -4,6 +4,7 @@
 
 *Этот проект демонстрирует уязвимость схемы защиты TPM+PIN в systemd-cryptenroll - программную эмуляцию атаки faulTPM без какого-либо физического вмешательства в аппаратный TPM.*
 
+> С выходом systemd 262 эта "[уязвимость](https://github.com/systemd/systemd/issues/37386)" была [исправлена](https://github.com/systemd/systemd/pull/41859). Теперь systemd по умолчанию делает Argon2id-based PIN. 
 
 ## Требования
 
